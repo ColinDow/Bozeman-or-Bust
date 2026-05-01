@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Move Planner">
+<title>Boise → Bozeman</title>
+<style>
+:root {
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#eeecea;
+  --text:#1a1a18;--text2:#6b6b67;--text3:#9e9e9a;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.2);
+  --teal:#1D9E75;--teal-bg:#E1F5EE;--teal-text:#085041;
+  --amber-bg:#FAEEDA;--amber-text:#633806;
+  --blue-bg:#E6F1FB;--blue-text:#0C447C;
+  --pink-bg:#FBEAF0;--pink-text:#72243E;
+  --green-bg:#EAF3DE;--green-text:#27500A;
+  --purple-bg:#EEEDFE;--purple-text:#3C3489;
+  --gray-bg:#F1EFE8;--gray-text:#444441;
+  --red:#E24B4A;--radius:12px;--radius-sm:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+    --text:#f0efe9;--text2:#a0a09a;--text3:#686864;
+    --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);
+    --teal-bg:#04342C;--teal-text:#9FE1CB;
+    --amber-bg:#412402;--amber-text:#FAC775;
+    --blue-bg:#042C53;--blue-text:#B5D4F4;
+    --pink-bg:#4B1528;--pink-text:#F4C0D1;
+    --green-bg:#173404;--green-text:#C0DD97;
+    --purple-bg:#26215C;--purple-text:#CECBF6;
+    --gray-bg:#2C2C2A;--gray-text:#D3D1C7;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* Auth */
+#auth-screen{align-items:center;justify-content:center;padding:2rem;text-align:center;}
+.auth-icon{width:60px;height:60px;background:var(--teal-bg);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;}
+#auth-screen h1{font-size:24px;font-weight:700;margin-bottom:8px;}
+#auth-screen p{font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.6;max-width:280px;}
+.g-btn{display:flex;align-items:center;gap:10px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:13px 22px;font-size:15px;font-weight:500;color:var(--text);cursor:pointer;width:100%;max-width:280px;justify-content:center;}
+.g-btn:active{opacity:0.7;}
+.auth-note{font-size:12px;color:var(--text3);margin-top:14px;max-width:260px;}
+
+/* Loading */
+#loading-screen{align-items:center;justify-content:center;gap:14px;}
+.spinner{width:30px;height:30px;border:2.5px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading-screen p{font-size:14px;color:var(--text2);}
+
+/* App */
+.header{padding:16px 16px 0;padding-top:calc(16px + env(safe-area-inset-top,0px));}
+.hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.htitle{font-size:20px;font-weight:700;letter-spacing:-0.3px;}
+.user-pill{font-size:12px;padding:4px 11px;border-radius:20px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);}
+.hsub{font-size:13px;color:var(--text2);}
+.sync-bar{display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 0;font-size:11px;color:var(--text3);}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
+.sdot.syncing{background:var(--amber-text);animation:pulse 1s infinite;}
+.sdot.err{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+.stats-wrap{padding:8px 16px 0;}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.stat{background:var(--bg2);border-radius:var(--radius-sm);padding:9px 11px;}
+.snum{font-size:21px;font-weight:700;}
+.slabel{font-size:11px;color:var(--text2);margin-top:1px;}
+.pbar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pfill{height:100%;background:var(--teal);border-radius:2px;transition:width 0.4s;}
+.tabs{display:flex;gap:6px;padding:12px 16px 0;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:6px 14px;border:0.5px solid var(--border2);border-radius:20px;font-size:13px;font-weight:500;color:var(--text2);background:transparent;cursor:pointer;}
+.tab.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+.fbar{display:flex;gap:6px;padding:8px 16px 0;overflow-x:auto;scrollbar-width:none;}
+.fbar::-webkit-scrollbar{display:none;}
+.fbtn{flex-shrink:0;padding:4px 12px;border:0.5px solid var(--border);border-radius:20px;font-size:12px;color:var(--text2);background:transparent;cursor:pointer;}
+.fbtn.active{background:var(--teal-bg);color:var(--teal-text);border-color:transparent;}
+.content{padding:12px 16px;padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));}
+
+/* Tasks */
+.wlabel{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin:14px 0 7px;}
+.wlabel:first-child{margin-top:0;}
+.tcard{background:var(--bg2);border-radius:var(--radius);margin-bottom:6px;}
+.trow{display:flex;align-items:flex-start;gap:12px;padding:12px;cursor:pointer;border-radius:var(--radius);}
+.trow:active{opacity:0.65;}
+.chk{width:21px;height:21px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.chk.on{background:var(--teal);border-color:var(--teal);}
+.chk svg{width:11px;height:11px;stroke:#fff;stroke-width:2.5;fill:none;opacity:0;transition:opacity 0.15s;}
+.chk.on svg{opacity:1;}
+.tbody{flex:1;min-width:0;}
+.ttitle{font-size:14px;line-height:1.45;color:var(--text);}
+.trow.done .ttitle{text-decoration:line-through;color:var(--text3);}
+.tmeta{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;}
+.ztag{font-size:11px;padding:2px 7px;border-radius:5px;background:var(--bg3);color:var(--text2);}
+.otag{font-size:11px;padding:2px 7px;border-radius:5px;font-weight:500;}
+
+/* Section heads */
+.shead{display:flex;align-items:center;justify-content:space-between;margin:14px 0 7px;}
+.shead:first-child{margin-top:0;}
+.sname{font-size:14px;font-weight:600;}
+.scnt{font-size:12px;color:var(--text2);}
+.opill{font-size:13px;font-weight:600;padding:3px 12px;border-radius:20px;}
+
+/* Handover */
+.hocat{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin:14px 0 7px;}
+.hocat:first-child{margin-top:0;}
+.hocard{background:var(--bg2);border-radius:var(--radius);margin-bottom:6px;}
+.horrow{display:flex;gap:12px;padding:12px;cursor:pointer;border-radius:var(--radius);}
+.horrow:active{opacity:0.65;}
+.horrow.done .hotext{text-decoration:line-through;color:var(--text3);}
+.hotext{font-size:14px;line-height:1.45;}
+.honote{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.35;}
+
+/* Forgotten */
+.fcard{background:var(--bg2);border-radius:var(--radius);padding:12px;margin-bottom:8px;}
+.ftitle{font-size:13px;font-weight:600;margin-bottom:7px;}
+.fitem{font-size:13px;color:var(--text2);padding:2px 0;}
+
+/* Banners */
+.banner{padding:11px 13px;border-radius:var(--radius-sm);font-size:13px;line-height:1.5;margin-bottom:12px;}
+.banner.info{background:var(--blue-bg);color:var(--blue-text);}
+.banner.warn{background:var(--amber-bg);color:var(--amber-text);}
+.miniprog{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.mpbar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.mpfill{height:100%;background:var(--teal);border-radius:2px;transition:width 0.3s;}
+.mplabel{font-size:12px;color:var(--text2);white-space:nowrap;}
+.empty{font-size:14px;color:var(--text2);padding-top:1rem;}
+</style>
+</head>
+<body>
+
+<div id="loading-screen" class="screen active">
+  <div class="spinner"></div>
+  <p id="lmsg">Initializing…</p>
+</div>
+
+<div id="auth-screen" class="screen">
+  <div class="auth-icon">
+    <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+      <path d="M14 3L18 11L27 12.5L20.5 19L22 28L14 24L6 28L7.5 19L1 12.5L10 11Z" fill="#1D9E75"/>
+    </svg>
+  </div>
+  <h1>Boise → Bozeman</h1>
+  <p>Sign in with your Google account to access the shared family move planner.</p>
+  <button class="g-btn" onclick="handleSignIn()">
+    <svg width="18" height="18" viewBox="0 0 24 24">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+    Sign in with Google
+  </button>
+  <p class="auth-note">Only authorized accounts can access this planner.</p>
+</div>
+
+<div id="app-screen" class="screen">
+  <div class="header">
+    <div class="hrow">
+      <div class="htitle">Boise → Bozeman</div>
+      <div class="user-pill" id="upill">…</div>
+    </div>
+    <div class="hsub">4 weeks out · personal items only</div>
+  </div>
+  <div class="sync-bar">
+    <div class="sdot" id="sdot"></div>
+    <span id="slabel">Loading…</span>
+  </div>
+  <div class="stats-wrap">
+    <div class="sgrid">
+      <div class="stat"><div class="snum" id="s-done">0</div><div class="slabel">Done</div></div>
+      <div class="stat"><div class="snum" id="s-total">0</div><div class="slabel">Total</div></div>
+      <div class="stat"><div class="snum" id="s-pct">0%</div><div class="slabel">Complete</div></div>
+    </div>
+    <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('timeline',this)">Timeline</button>
+    <button class="tab" onclick="switchTab('byowner',this)">By person</button>
+    <button class="tab" onclick="switchTab('byroom',this)">By room</button>
+    <button class="tab" onclick="switchTab('handover',this)">Handover</button>
+    <button class="tab" onclick="switchTab('forgotten',this)">Easy to forget</button>
+  </div>
+  <div class="fbar" id="fbar">
+    <button class="fbtn active" onclick="switchFilter('all',this)">All</button>
+    <button class="fbtn" onclick="switchFilter('open',this)">Open</button>
+    <button class="fbtn" onclick="switchFilter('unassigned',this)">Unassigned</button>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+// ── CONFIG — replace this with your actual Client ID ──────────────────────────
+const CLIENT_ID = '430544290766-ti8ai5upac1p30501pu6ti1k43clh37v.apps.googleusercontent.com';
+const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const FILENAME = 'move-planner-state.json';
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const OC={Colin:'var(--blue-bg)',Katie:'var(--pink-bg)',Locksley:'var(--green-bg)',Everly:'var(--teal-bg)','Both girls':'var(--purple-bg)',Everyone:'var(--gray-bg)',Unassigned:'var(--bg3)'};
+const OT={Colin:'var(--blue-text)',Katie:'var(--pink-text)',Locksley:'var(--green-text)',Everly:'var(--teal-text)','Both girls':'var(--purple-text)',Everyone:'var(--gray-text)',Unassigned:'var(--text2)'};
+
+const TASKS=[
+  {id:1,week:'Week 1 — 4 weeks out',title:'Walk every room, photograph condition, note what stays vs. goes',zone:'Whole house',owner:'Everyone'},
+  {id:2,week:'Week 1 — 4 weeks out',title:'Order boxes, packing tape, labels, and wardrobe boxes',zone:'Supplies',owner:'Colin'},
+  {id:3,week:'Week 1 — 4 weeks out',title:'Reserve moving truck or book movers for move day',zone:'Logistics',owner:'Colin'},
+  {id:4,week:'Week 1 — 4 weeks out',title:'Set up USPS mail forwarding to Bozeman address',zone:'Admin',owner:'Katie'},
+  {id:5,week:'Week 1 — 4 weeks out',title:'Update address with banks, insurance, subscriptions, employer',zone:'Admin',owner:'Colin'},
+  {id:6,week:'Week 1 — 4 weeks out',title:'Notify school and extracurriculars of move date and last day',zone:'Admin',owner:'Katie'},
+  {id:7,week:'Week 1 — 4 weeks out',title:'Transfer or request medical, dental, and vet records',zone:'Admin',owner:'Colin'},
+  {id:8,week:'Week 1 — 4 weeks out',title:'Locksley: pack treasured items and stuffed animals into one labeled box',zone:"Locksley's room",owner:'Locksley'},
+  {id:9,week:'Week 1 — 4 weeks out',title:'Everly: pack treasured items and stuffed animals into one labeled box',zone:"Everly's room",owner:'Everly'},
+  {id:10,week:'Week 1 — 4 weeks out',title:'Identify donate, trash, and sell piles in each room',zone:'Whole house',owner:'Everyone'},
+  {id:11,week:'Week 1 — 4 weeks out',title:'Pull out lease and note every handover requirement',zone:'Admin',owner:'Colin'},
+  {id:12,week:'Week 2 — 3 weeks out',title:'Pack off-season and non-daily clothes',zone:'Bedrooms',owner:'Everyone'},
+  {id:13,week:'Week 2 — 3 weeks out',title:'Pack books and non-essential items from living room',zone:'Living room',owner:'Unassigned'},
+  {id:14,week:'Week 2 — 3 weeks out',title:'Sort and pack garage — camping, bikes, sports gear, tools',zone:'Garage',owner:'Colin'},
+  {id:15,week:'Week 2 — 3 weeks out',title:'Pack patio items — cushions, gear, planters, lighting you own',zone:'Patio',owner:'Colin'},
+  {id:16,week:'Week 2 — 3 weeks out',title:'Locksley: pack books, games, and non-daily room items',zone:"Locksley's room",owner:'Locksley'},
+  {id:17,week:'Week 2 — 3 weeks out',title:'Everly: pack books, games, and non-daily room items',zone:"Everly's room",owner:'Everly'},
+  {id:18,week:'Week 2 — 3 weeks out',title:'Pack playroom / loft — art supplies, toys not staying',zone:'Kids playroom/loft',owner:'Both girls'},
+  {id:19,week:'Week 2 — 3 weeks out',title:'Go through medications, vitamins, first aid — pack or properly dispose',zone:'Bathrooms',owner:'Katie'},
+  {id:20,week:'Week 2 — 3 weeks out',title:'Pack all framed photos, wall art, and mirrors that belong to you',zone:'Whole house',owner:'Unassigned'},
+  {id:21,week:'Week 2 — 3 weeks out',title:'Pack basement — storage items, gear, seasonal decorations',zone:'Basement',owner:'Colin'},
+  {id:22,week:'Week 2 — 3 weeks out',title:'Arrange donation pickup or drop-off',zone:'Whole house',owner:'Katie'},
+  {id:23,week:'Week 2 — 3 weeks out',title:'Take full photo inventory of furnished home for rental records',zone:'Admin',owner:'Colin'},
+  {id:24,week:'Week 3 — 2 weeks out',title:'Pack remaining clothes except that week\'s essentials',zone:'Bedrooms',owner:'Everyone'},
+  {id:25,week:'Week 3 — 2 weeks out',title:'Pack bathroom items except daily-use essentials',zone:'Bathrooms',owner:'Everyone'},
+  {id:26,week:'Week 3 — 2 weeks out',title:'Pack office — files, equipment, accessories, paper supplies',zone:'Office',owner:'Colin'},
+  {id:27,week:'Week 3 — 2 weeks out',title:'Pack kitchen personal items — specialty tools, good knives, spices',zone:'Kitchen & butler pantry',owner:'Katie'},
+  {id:28,week:'Week 3 — 2 weeks out',title:'Butler pantry sweep — back shelves, specialty appliances, pantry stash',zone:'Kitchen & butler pantry',owner:'Katie'},
+  {id:29,week:'Week 3 — 2 weeks out',title:'Locksley: full room pack — closet top shelf, under bed, desk drawers',zone:"Locksley's room",owner:'Locksley'},
+  {id:30,week:'Week 3 — 2 weeks out',title:'Everly: full room pack — closet top shelf, under bed, toy bins',zone:"Everly's room",owner:'Everly'},
+  {id:31,week:'Week 3 — 2 weeks out',title:'Pack laundry room — detergent, iron, drying rack, hangers keeping',zone:'Laundry',owner:'Katie'},
+  {id:32,week:'Week 3 — 2 weeks out',title:'Gather all chargers, cables, electronics accessories — label and pack',zone:'Whole house',owner:'Colin'},
+  {id:33,week:'Week 3 — 2 weeks out',title:'Confirm Boise utility accounts and set up billing oversight plan',zone:'Admin',owner:'Colin'},
+  {id:34,week:'Week 3 — 2 weeks out',title:'Confirm pet travel plan — carrier, records, food for the drive',zone:'Pets',owner:'Katie'},
+  {id:35,week:'Week 3 — 2 weeks out',title:'Drain, dry, and prep outdoor gear — kayak, camping stove, fuel canisters',zone:'Garage',owner:'Colin'},
+  {id:36,week:'Week 3 — 2 weeks out',title:'Pack any rugs or textiles that belong to you, not the rental',zone:'Whole house',owner:'Unassigned'},
+  {id:37,week:'Final 10 days',title:'Pack "open first" box — coffee gear, toilet paper, sheets, chargers, snacks',zone:'Essentials',owner:'Katie'},
+  {id:38,week:'Final 10 days',title:'Each person packs a 3-day travel bag — clothes, toiletries, entertainment',zone:'Travel bags',owner:'Everyone'},
+  {id:39,week:'Final 10 days',title:'Remove personal items from walls — patch nail holes per lease terms',zone:'Whole house',owner:'Colin'},
+  {id:40,week:'Final 10 days',title:'Return anything borrowed from neighbors or friends in Boise',zone:'Misc',owner:'Colin'},
+  {id:41,week:'Final 10 days',title:'Cancel or transfer local services — gym, recurring deliveries, subscriptions',zone:'Admin',owner:'Katie'},
+  {id:42,week:'Final 10 days',title:'Girls: "treasure hunt" final sweep of rooms — reward for anything found',zone:"Locksley's & Everly's rooms",owner:'Both girls'},
+  {id:43,week:'Final 10 days',title:'Final full walk — every drawer, cabinet, closet, garage shelf, outdoor area',zone:'Whole house',owner:'Everyone'},
+  {id:44,week:'Final 10 days',title:'Leave welcome packet and house guide for incoming renters',zone:'Admin',owner:'Colin'},
+  {id:45,week:'Final 10 days',title:'Complete all handover requirements per lease — keys, remotes, codes',zone:'Admin',owner:'Colin'},
+];
+
+const HANDOVER=[
+  {cat:'Documentation',items:[
+    {t:'Photograph every room, surface, and appliance before departure',n:'Timestamp everything — this is your legal protection'},
+    {t:'Create a written move-out condition report',n:'Compare against move-in photos or original inspection report'},
+    {t:'Return signed copy of any move-out checklist required by lease',n:''},
+    {t:'Gather all original lease documents and addenda for your records',n:''},
+  ]},
+  {cat:'Keys, access, and codes',items:[
+    {t:'Return all copies of all keys — front, back, garage, mailbox',n:'Count every set you have and account for each one'},
+    {t:'Provide garage door remotes and keypads',n:''},
+    {t:'Share smart lock codes, alarm codes, and app access per lease',n:'Reset codes you set so renters start fresh'},
+    {t:'Provide gate codes or HOA access fobs if applicable',n:''},
+    {t:'Transfer or document any smart home devices (Nest, Ring, etc.)',n:'Decide what stays and what leaves — put it in writing'},
+  ]},
+  {cat:'Utilities and accounts',items:[
+    {t:'Boise utilities stay in your name — set up billing oversight and usage alerts',n:'Know who monitors this remotely; alert on any abnormal spikes'},
+    {t:'Provide renters with utility contact info for emergencies',n:'You remain legally responsible — they need a point of contact'},
+    {t:'Leave instructions for trash and recycling pickup days',n:''},
+    {t:'Note any utility quirks — water heater reset, breaker panel labels, etc.',n:''},
+  ]},
+  {cat:'Appliances and inventory',items:[
+    {t:'Create a written furnished-home inventory — everything included for renters',n:'Protects you if items go missing during tenancy'},
+    {t:'Leave manuals or QR codes for appliances and systems',n:'Washer, dryer, HVAC, dishwasher, oven, etc.'},
+    {t:'Test all appliances before departure and note pre-existing issues in writing',n:''},
+    {t:'Confirm all remotes, controllers, and accessories are accounted for',n:''},
+  ]},
+  {cat:'Cleaning and condition',items:[
+    {t:'Deep clean per lease terms — kitchen, bathrooms, floors, baseboards',n:'Hire a professional cleaner if lease requires it'},
+    {t:'Clean all appliances inside and out — oven, fridge, microwave',n:''},
+    {t:'Empty and clean all cabinets, drawers, and closets of personal items',n:''},
+    {t:'Clean garage and outdoor areas — sweep, remove all personal property',n:''},
+    {t:'Replace any burned-out bulbs',n:'Small detail, strong first impression for renters'},
+    {t:'Touch up scuffs or marks per lease — document what was pre-existing',n:''},
+  ]},
+  {cat:'Renter welcome',items:[
+    {t:'Leave a house guide — WiFi, HVAC, parking, trash, quirks, emergency contacts',n:'Protects your property and reduces unnecessary calls to you'},
+    {t:'Leave your contact info and property manager contact if applicable',n:''},
+    {t:'Note any HOA or neighborhood rules — noise, parking, guest restrictions',n:''},
+    {t:'Satisfy any Airbnb or platform-specific requirements per hosting agreement',n:''},
+  ]},
+];
+
+const FORGOTTEN=[
+  {cat:'Hidden in furniture',items:['Nightstand drawers','Under all beds','Inside ottomans or storage benches','Top of wardrobe and closet shelves','Books pushed to back of shelves']},
+  {cat:'Walls and hooks',items:["Command hooks and strips","Kids' artwork still hung","Hooks behind every door","Bike hooks in garage","Curtain rods (if yours)","Floating shelves (if yours)"]},
+  {cat:'Garage and outdoor',items:['Hose nozzles and attachments','Garden tools leaned in corners','Kayak / paddleboard accessories','Spare vehicle keys','Roof rack parts or straps','Bikes and helmets']},
+  {cat:'Basement',items:['Seasonal decor in back corners','Sports equipment','Holiday lighting and inflatables','Stored tools or appliances']},
+  {cat:'Cars and travel',items:["Gear in trunks and gloveboxes","Kids' car toys and snack stash","Emergency kit items","Hitch or roof cargo gear"]},
+  {cat:'Kitchen and butler pantry',items:['Back of pantry deep shelves','Specialty appliances (waffle iron, etc.)','Good knives — often left behind','Freezer contents','Under-sink items']},
+  {cat:'Sentimental / irreplaceable',items:['Passports and birth certificates','Hard drives and photo backups',"Kids' school keepsakes and artwork",'Sports memorabilia or trophies','Heirloom or gifted items']},
+  {cat:'Digital and admin',items:['Smart home devices (Nest, Ring, etc.)','Subscriptions tied to Boise address','Gym or club memberships to cancel','Pet licensing transfer','Airbnb hosting account details']},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let state={done:{},handoverDone:{}};
+let fileId=null,accessToken=null,tokenClient=null;
+let currentTab='timeline',currentFilter='all';
+let saveTimer=null;
+
+// ── SCREENS ───────────────────────────────────────────────────────────────────
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function loading(msg){document.getElementById('lmsg').textContent=msg;show('loading-screen');}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+function waitForGSI(cb,tries=0){
+  if(typeof google!=='undefined'&&google.accounts)return cb();
+  if(tries>30)return show('auth-screen');
+  setTimeout(()=>waitForGSI(cb,tries+1),200);
+}
+
+function initAuth(){
+  waitForGSI(()=>{
+    tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:CLIENT_ID,
+      scope:SCOPE,
+      callback:(resp)=>{
+        if(resp.error){show('auth-screen');return;}
+        accessToken=resp.access_token;
+        onAuthed();
+      }
+    });
+    show('auth-screen');
+  });
+}
+
+function handleSignIn(){
+  if(!tokenClient){alert('Still loading. Please wait a moment and try again.');return;}
+  tokenClient.requestAccessToken({prompt:'consent'});
+}
+
+async function onAuthed(){
+  loading('Loading your move plan…');
+  try{
+    const r=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}});
+    const d=await r.json();
+    document.getElementById('upill').textContent=d.given_name||d.name||'You';
+  }catch{}
+  await loadState();
+  show('app-screen');
+  renderAll();
+  setInterval(pollState,15000);
+}
+
+// ── DRIVE ─────────────────────────────────────────────────────────────────────
+function auth(){return{Authorization:`Bearer ${accessToken}`};}
+
+async function loadState(){
+  setSyncStatus('syncing','Syncing…');
+  try{
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${FILENAME}'&fields=files(id)`,{headers:auth()});
+    const d=await r.json();
+    if(d.files&&d.files.length){
+      fileId=d.files[0].id;
+      const f=await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,{headers:auth()});
+      const j=await f.json();
+      state={done:j.done||{},handoverDone:j.handoverDone||{}};
+    }
+    setSyncStatus('ok','Synced');
+  }catch(e){setSyncStatus('err','Sync error');}
+}
+
+async function saveState(){
+  setSyncStatus('syncing','Saving…');
+  const body=JSON.stringify(state);
+  try{
+    if(!fileId){
+      const form=new FormData();
+      form.append('metadata',new Blob([JSON.stringify({name:FILENAME,parents:['appDataFolder']})],{type:'application/json'}));
+      form.append('file',new Blob([body],{type:'application/json'}));
+      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:auth(),body:form});
+      const d=await r.json();
+      fileId=d.id;
+    }else{
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,{method:'PATCH',headers:{...auth(),'Content-Type':'application/json'},body});
+    }
+    setSyncStatus('ok','Saved ✓');
+    setTimeout(()=>setSyncStatus('ok','Synced'),2000);
+  }catch{setSyncStatus('err','Save failed');}
+}
+
+async function pollState(){
+  if(!fileId)return;
+  try{
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,{headers:auth()});
+    const remote=await r.json();
+    const rs=JSON.stringify({done:remote.done||{},handoverDone:remote.handoverDone||{}});
+    if(rs!==JSON.stringify(state)){
+      state={done:remote.done||{},handoverDone:remote.handoverDone||{}};
+      renderAll();
+      setSyncStatus('ok','Updated ↓');
+      setTimeout(()=>setSyncStatus('ok','Synced'),2000);
+    }
+  }catch{}
+}
+
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveState,700);}
+function setSyncStatus(s,msg){
+  const d=document.getElementById('sdot');
+  d.className='sdot'+(s==='syncing'?' syncing':s==='err'?' err':'');
+  document.getElementById('slabel').textContent=msg;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function toggleTask(id){state.done[id]=!state.done[id];scheduleSave();renderAll();}
+function toggleHandover(key){state.handoverDone[key]=!state.handoverDone[key];scheduleSave();renderHandover();updateStats();}
+function switchTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('fbar').style.display=tab==='timeline'?'flex':'none';
+  renderContent();
+}
+function switchFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderTimeline();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll(){updateStats();renderContent();}
+function updateStats(){
+  const total=TASKS.length,done=TASKS.filter(t=>state.done[t.id]).length;
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-total').textContent=total;
+  document.getElementById('s-pct').textContent=Math.round(done/total*100)+'%';
+  document.getElementById('pfill').style.width=Math.round(done/total*100)+'%';
+}
+function renderContent(){
+  if(currentTab==='timeline')renderTimeline();
+  else if(currentTab==='byowner')renderByOwner();
+  else if(currentTab==='byroom')renderByRoom();
+  else if(currentTab==='handover')renderHandover();
+  else renderForgotten();
+}
+function chk(on){return`<div class="chk${on?' on':''}"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>`;}
+function tcard(t){
+  const done=!!state.done[t.id];
+  return`<div class="tcard"><div class="trow${done?' done':''}" onclick="toggleTask(${t.id})">${chk(done)}<div class="tbody"><div class="ttitle">${t.title}</div><div class="tmeta"><span class="ztag">${t.zone}</span><span class="otag" style="background:${OC[t.owner]};color:${OT[t.owner]};">${t.owner}</span></div></div></div></div>`;
+}
+function renderTimeline(){
+  let tasks=TASKS;
+  if(currentFilter==='open')tasks=TASKS.filter(t=>!state.done[t.id]);
+  if(currentFilter==='unassigned')tasks=TASKS.filter(t=>t.owner==='Unassigned'&&!state.done[t.id]);
+  const weeks=[...new Set(tasks.map(t=>t.week))];
+  const c=document.getElementById('content');
+  if(!tasks.length){c.innerHTML='<p class="empty">Nothing here.</p>';return;}
+  c.innerHTML=weeks.map(w=>`<div class="wlabel">${w}</div>${tasks.filter(t=>t.week===w).map(tcard).join('')}`).join('');
+}
+function renderByOwner(){
+  const owners=['Colin','Katie','Locksley','Everly','Both girls','Everyone','Unassigned'];
+  document.getElementById('content').innerHTML=owners.map(o=>{
+    const ot=TASKS.filter(t=>t.owner===o);if(!ot.length)return'';
+    const done=ot.filter(t=>state.done[t.id]).length;
+    return`<div class="shead"><span class="opill" style="background:${OC[o]};color:${OT[o]};">${o}</span><span class="scnt">${done}/${ot.length}</span></div>${ot.map(tcard).join('')}`;
+  }).join('');
+}
+function renderByRoom(){
+  const rooms=[...new Set(TASKS.map(t=>t.zone))].sort();
+  document.getElementById('content').innerHTML=rooms.map(r=>{
+    const rt=TASKS.filter(t=>t.zone===r),done=rt.filter(t=>state.done[t.id]).length;
+    return`<div class="shead"><span class="sname">${r}</span><span class="scnt">${done}/${rt.length}</span></div>${rt.map(tcard).join('')}`;
+  }).join('');
+}
+function renderHandover(){
+  const total=HANDOVER.reduce((a,c)=>a+c.items.length,0);
+  const done=Object.values(state.handoverDone).filter(Boolean).length;
+  document.getElementById('content').innerHTML=`
+    <div class="banner info">Pull out your lease and cross-reference each item. This is where deposits are won or lost.</div>
+    <div class="miniprog"><div class="mpbar"><div class="mpfill" style="width:${Math.round(done/total*100)}%"></div></div><span class="mplabel">${done} / ${total}</span></div>
+    ${HANDOVER.map(cat=>`<div class="hocat">${cat.cat}</div>${cat.items.map((item,i)=>{
+      const key=cat.cat+'-'+i,on=!!state.handoverDone[key];
+      return`<div class="hocard"><div class="horrow${on?' done':''}" onclick="toggleHandover('${key}')">${chk(on)}<div><div class="hotext">${item.t}</div>${item.n?`<div class="honote">${item.n}</div>`:''}</div></div></div>`;
+    }).join('')}`).join('')}`;
+}
+function renderForgotten(){
+  document.getElementById('content').innerHTML=`
+    <div class="banner warn">Walk each room with this list. These are what families most often discover missing after the truck leaves.</div>
+    ${FORGOTTEN.map(f=>`<div class="fcard"><div class="ftitle">${f.cat}</div>${f.items.map(i=>`<div class="fitem">· ${i}</div>`).join('')}</div>`).join('')}`;
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  if(CLIENT_ID==='430544290766-ti8ai5upac1p30501pu6ti1k43clh37v.apps.googleusercontent.com'){
+    document.getElementById('loading-screen').innerHTML=`<div style="text-align:center;padding:2rem;max-width:300px;"><div style="font-size:2rem;margin-bottom:1rem">⚙️</div><div style="font-size:16px;font-weight:600;margin-bottom:8px;">Client ID not set</div><div style="font-size:14px;color:var(--text2);line-height:1.6;">Open this file in a text editor and replace <code style="background:var(--bg3);padding:2px 5px;border-radius:4px;">430544290766-ti8ai5upac1p30501pu6ti1k43clh37v.apps.googleusercontent.com</code> with your Google OAuth Client ID.</div></div>`;
+    return;
+  }
+  initAuth();
+});
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+</body>
+</html>
